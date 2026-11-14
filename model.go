@@ -14,6 +14,7 @@ const (
 	modeAdding
 	modeEditing
 	modeConfirmingDelete
+	modeOverview
 )
 
 type Todo struct {
@@ -22,13 +23,15 @@ type Todo struct {
 }
 
 type model struct {
-	store    Store
-	day      time.Time
-	dayStart time.Duration
-	cursor   int
-	input    textinput.Model
-	mode     mode
-	showHelp bool
+	store          Store
+	day            time.Time
+	dayStart       time.Duration
+	cursor         int
+	input          textinput.Model
+	mode           mode
+	showHelp       bool
+	overviewWeek   time.Time
+	overviewCursor int
 }
 
 func initialModel(dayStart time.Duration) model {

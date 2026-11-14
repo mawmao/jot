@@ -69,6 +69,22 @@ func logicalDay(t time.Time, dayStart time.Duration) time.Time {
 	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
 }
 
+func startOfWeek(t time.Time) time.Time {
+	wd := int(t.Weekday())
+	if wd == 0 { // Sunday
+		wd = 7
+	}
+	return t.AddDate(0, 0, -(wd - 1))
+}
+
+func dayIndexInWeek(day, weekStart time.Time) int {
+	dy, dm, dd := day.Date()
+	wy, wm, wd := weekStart.Date()
+	d := time.Date(dy, dm, dd, 0, 0, 0, 0, time.UTC)
+	w := time.Date(wy, wm, wd, 0, 0, 0, 0, time.UTC)
+	return int(d.Sub(w).Hours() / 24)
+}
+
 func dayKey(t time.Time) string {
 	return t.Format(dateFormat)
 }

@@ -1,3 +1,4 @@
+// ./view.go
 package main
 
 import (
@@ -25,13 +26,39 @@ func (m model) View() tea.View {
 		return v
 	}
 
-	s := m.header() + "\n\n"
-
 	todos := m.current()
-	if len(todos) == 0 {
-		s += "  nothing yet - press a to jot one down\n"
+
+	reserved := 2
+	scrolled := false
+	if m.height > 0 && len(todos) > 0 {
+		avail := max(1, m.height-reserved)
+		if len(todos) > avail {
+			scrolled = true
+			reserved += 2
+		}
 	}
-	for i, todo := range todos {
+
+	switch {
+	case m.mode == modeConfirmingDelete && m.cursor < len(todos):
+		reserved += 2
+	case m.mode != modeBrowsing:
+		reserved += 3
+	case m.showHelp:
+		reserved += 4
+	}
+	if m.statusErr != "" {
+		reserved += 2
+	}
+
+	start, end := m.visibleRange(len(todos), reserved)
+
+	s := truncateLine(m.header(), m.width) + "\n\n"
+
+	if len(todos) == 0 {
+		s += truncateLine("  nothing yet - press a to jot one down", m.width) + "\n"
+	}
+	for i := start; i < end; i++ {
+		todo := todos[i]
 		cursor := " "
 		if m.cursor == i {
 			cursor = ">"
@@ -41,7 +68,7 @@ func (m model) View() tea.View {
 			checked = "x"
 		}
 
-		line := fmt.Sprintf("%s [%s] %s", cursor, checked, todo.Title)
+		line := truncateLine(fmt.Sprintf("%s [%s] %s", cursor, checked, todo.Title), m.width)
 
 		switch {
 		case m.mode == modeConfirmingDelete && m.cursor == i:
@@ -53,23 +80,26 @@ func (m model) View() tea.View {
 		s += line + "\n"
 	}
 
+	if scrolled {
+		s += truncateLine(fmt.Sprintf("\n  item %d/%d", m.cursor+1, len(todos)), m.width) + "\n"
+	}
+
 	switch {
 	case m.mode == modeConfirmingDelete:
-		todos := m.current()
 		if m.cursor < len(todos) {
-			s += "\nPress 'd' again to delete\n"
+			s += "\n" + truncateLine("Press 'd' again to delete", m.width) + "\n"
 		}
 	case m.mode != modeBrowsing:
 		s += "\n" + m.input.View() + "\n"
-		s += "\nenter to save · esc to cancel\n"
+		s += "\n" + truncateLine("enter to save · esc to cancel", m.width) + "\n"
 	case m.showHelp:
-		s += "\nh/l prev/next day · j/k move · a add · e edit · d delete\n"
-		s += "w week overview · t today · ? help · q quit\n"
-		s += "press ? to hide help\n"
+		s += "\n" + truncateLine("h/l prev/next day · j/k move · a add · e edit · d delete", m.width) + "\n"
+		s += truncateLine("w week overview · t today · ? help · q quit", m.width) + "\n"
+		s += truncateLine("press ? to hide help", m.width) + "\n"
 	}
 
 	if m.statusErr != "" {
-		s += "\n" + deleteStyle.Render("! "+m.statusErr) + "\n"
+		s += "\n" + deleteStyle.Render(truncateLine("! "+m.statusErr, m.width)) + "\n"
 	}
 
 	v := tea.NewView(s)
@@ -101,10 +131,11 @@ func (m model) header() string {
 
 func (m model) overviewView() string {
 	end := m.overviewWeek.AddDate(0, 0, 6)
-	s := fmt.Sprintf("Week of %s - %s, %d\n\n",
+	header := fmt.Sprintf("Week of %s - %s, %d",
 		m.overviewWeek.Format("Jan 2"),
 		end.Format("Jan 2"),
 		m.overviewWeek.Year())
+	s := truncateLine(header, m.width) + "\n\n"
 
 	today := logicalDay(time.Now(), m.dayStart)
 
@@ -142,8 +173,8 @@ func (m model) overviewView() string {
 			count = fmt.Sprintf("%d", total)
 		}
 
-		line := fmt.Sprintf("%s%s %-12s  %s",
-			cursor, marker, day.Format("Mon Jan 2"), count)
+		line := truncateLine(fmt.Sprintf("%s%s %-12s  %s",
+			cursor, marker, day.Format("Mon Jan 2"), count), m.width)
 
 		if m.overviewCursor == i {
 			line = editStyle.Render(line)
@@ -152,6 +183,43 @@ func (m model) overviewView() string {
 		s += line + "\n"
 	}
 
-	s += "\nh/l prev/next week · j/k move · enter open day · esc back\n"
+	s += "\n" + truncateLine("h/l prev/next week · j/k move · enter open day · esc back", m.width) + "\n"
 	return s
+}
+
+func truncateLine(s string, maxWidth int) string {
+	if maxWidth <= 0 {
+		return s
+	}
+	runes := []rune(s)
+	if len(runes) <= maxWidth {
+		return s
+	}
+	if maxWidth == 1 {
+		return "…"
+	}
+	return string(runes[:maxWidth-1]) + "…"
+}
+
+func (m model) visibleRange(total, reservedLines int) (start, end int) {
+	if total == 0 {
+		return 0, 0
+	}
+	if m.height <= 0 {
+		return 0, total
+	}
+	avail := max(1, m.height-reservedLines)
+	if total <= avail {
+		return 0, total
+	}
+	start = m.cursor - avail/2
+	if start < 0 {
+		start = 0
+	}
+	end = start + avail
+	if end > total {
+		end = total
+		start = max(0, end-avail)
+	}
+	return start, end
 }

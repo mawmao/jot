@@ -33,6 +33,8 @@ type model struct {
 	showHelp       bool
 	overviewWeek   time.Time
 	overviewCursor int
+	width          int
+	height         int
 	statusErr      string
 }
 

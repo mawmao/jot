@@ -8,6 +8,16 @@ import (
 )
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if ws, ok := msg.(tea.WindowSizeMsg); ok {
+		m.width = ws.Width
+		m.height = ws.Height
+		if ws.Width > 4 {
+			// account for "> " / "edit> " prompt + cursor padding
+			m.input.SetWidth(ws.Width - 6)
+		}
+		return m, nil
+	}
+
 	switch m.mode {
 	case modeAdding, modeEditing:
 		return m.updateTextInput(msg)

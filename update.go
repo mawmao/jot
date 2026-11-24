@@ -46,7 +46,7 @@ func (m model) updateBrowsing(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(todos) > 0 {
 				m.clampCursor()
 				todos[m.cursor].Done = !todos[m.cursor].Done
-				_ = saveStore(m.store)
+				m.persist()
 			}
 
 		case "a", "n":
@@ -113,7 +113,7 @@ func (m model) updateAdding(msg tea.Msg) (tea.Model, tea.Cmd) {
 				todos := append(m.current(), Todo{Title: title})
 				m.setCurrent(todos)
 				m.cursor = len(todos) - 1
-				_ = saveStore(m.store)
+				m.persist()
 			}
 			m.mode = modeBrowsing
 			m.input.Blur()
@@ -144,7 +144,7 @@ func (m model) updateEditing(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if title != "" {
 				todos := m.current()
 				todos[m.cursor].Title = title
-				_ = saveStore(m.store)
+				m.persist()
 			}
 			m.mode = modeBrowsing
 			m.input.Blur()
@@ -170,7 +170,7 @@ func (m model) updateConfirmingDelete(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor >= len(todos) && m.cursor > 0 {
 					m.cursor--
 				}
-				_ = saveStore(m.store)
+				m.persist()
 			}
 			m.mode = modeBrowsing
 

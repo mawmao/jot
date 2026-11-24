@@ -68,6 +68,10 @@ func (m model) View() tea.View {
 		s += "press ? to hide help\n"
 	}
 
+	if m.statusErr != "" {
+		s += "\n" + deleteStyle.Render("! "+m.statusErr) + "\n"
+	}
+
 	v := tea.NewView(s)
 	v.AltScreen = true
 	return v

@@ -5,6 +5,7 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"fmt"
 )
 
 type mode int
@@ -32,20 +33,22 @@ type model struct {
 	showHelp       bool
 	overviewWeek   time.Time
 	overviewCursor int
+	statusErr      string
 }
 
-func initialModel(dayStart time.Duration) model {
+func initialModel(dayStart time.Duration, status string) model {
 	ti := textinput.New()
 	ti.Prompt = "> "
 	ti.Placeholder = "Jot something down..."
 	ti.CharLimit = 200
 
 	return model{
-		store:    loadStore(),
-		day:      logicalDay(time.Now(), dayStart),
-		dayStart: dayStart,
-		input:    ti,
-		showHelp: false,
+		store:     loadStore(),
+		day:       logicalDay(time.Now(), dayStart),
+		dayStart:  dayStart,
+		input:     ti,
+		showHelp:  false,
+		statusErr: status,
 	}
 }
 
@@ -75,4 +78,12 @@ func (m *model) clampCursor() {
 	if m.cursor >= n {
 		m.cursor = n - 1
 	}
+}
+
+func (m *model) persist() {
+	if err := saveStore(m.store); err != nil {
+		m.statusErr = fmt.Sprintf("save failed: %v", err)
+		return
+	}
+	m.statusErr = ""
 }

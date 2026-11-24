@@ -20,21 +20,26 @@ func configPath() (string, error) {
 	return filepath.Join(dir, "config.json"), nil
 }
 
-func loadConfig() Config {
+func loadConfig() (Config, string) {
 	cfg := Config{DayStart: "00:00"}
 	path, err := configPath()
 	if err != nil {
-		return cfg
+		return cfg, fmt.Sprintf("config path error: %v", err)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return cfg
+		if os.IsNotExist(err) {
+			return cfg, ""
+		}
+		return cfg, fmt.Sprintf("config read error: %v", err)
 	}
-	_ = json.Unmarshal(data, &cfg)
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return Config{DayStart: "00:00"}, fmt.Sprintf("invalid config.json: %v", err)
+	}
 	if cfg.DayStart == "" {
 		cfg.DayStart = "00:00"
 	}
-	return cfg
+	return cfg, ""
 }
 
 // this turns "HH:MM" into a duration since midnight.

@@ -9,10 +9,8 @@ import (
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.mode {
-	case modeAdding:
-		return m.updateAdding(msg)
-	case modeEditing:
-		return m.updateEditing(msg)
+	case modeAdding, modeEditing:
+		return m.updateTextInput(msg)
 	case modeConfirmingDelete:
 		return m.updateConfirmingDelete(msg)
 	case modeOverview:
@@ -50,19 +48,10 @@ func (m model) updateBrowsing(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "a", "n":
-			m.mode = modeAdding
-			m.input.Prompt = "> "
-			m.input.SetValue("")
-			return m, m.input.Focus()
+			return m, m.startAdding()
 
 		case "e":
-			todos := m.current()
-			if len(todos) > 0 {
-				m.mode = modeEditing
-				m.input.Prompt = "edit> "
-				m.input.SetValue(todos[m.cursor].Title)
-				return m, m.input.Focus()
-			}
+			return m, m.startEditing()
 
 		case "d", "x":
 			if len(m.current()) > 0 {
@@ -94,11 +83,10 @@ func (m model) updateBrowsing(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) updateAdding(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m model) updateTextInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
-
 		case "ctrl+c":
 			return m, tea.Quit
 
@@ -107,44 +95,21 @@ func (m model) updateAdding(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.input.Blur()
 			return m, nil
 
-		case "enter":
+		case "enter", "tab":
 			title := strings.TrimSpace(m.input.Value())
 			if title != "" {
-				todos := append(m.current(), Todo{Title: title})
-				m.setCurrent(todos)
-				m.cursor = len(todos) - 1
-				m.persist()
-			}
-			m.mode = modeBrowsing
-			m.input.Blur()
-			return m, nil
-		}
-	}
-
-	var cmd tea.Cmd
-	m.input, cmd = m.input.Update(msg)
-	return m, cmd
-}
-
-func (m model) updateEditing(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyPressMsg:
-		switch msg.String() {
-
-		case "ctrl+c":
-			return m, tea.Quit
-
-		case "esc":
-			m.mode = modeBrowsing
-			m.input.Blur()
-			return m, nil
-
-		case "enter":
-			title := strings.TrimSpace(m.input.Value())
-			if title != "" {
-				todos := m.current()
-				todos[m.cursor].Title = title
-				m.persist()
+				if m.mode == modeAdding {
+					todos := append(m.current(), Todo{Title: title})
+					m.setCurrent(todos)
+					m.cursor = len(todos) - 1
+					m.persist()
+				} else {
+					todos := m.current()
+					if m.cursor < len(todos) {
+						todos[m.cursor].Title = title
+						m.persist()
+					}
+				}
 			}
 			m.mode = modeBrowsing
 			m.input.Blur()

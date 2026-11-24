@@ -87,3 +87,23 @@ func (m *model) persist() {
 	}
 	m.statusErr = ""
 }
+
+func (m *model) startAdding() tea.Cmd {
+	m.mode = modeAdding
+	m.input.Prompt = "> "
+	m.input.SetValue("")
+	return m.input.Focus()
+}
+
+func (m *model) startEditing() tea.Cmd {
+	todos := m.current()
+	if len(todos) == 0 {
+		return nil
+	}
+	m.clampCursor()
+	m.mode = modeEditing
+	m.input.Prompt = "edit> "
+	m.input.SetValue(todos[m.cursor].Title)
+	m.input.CursorEnd()
+	return m.input.Focus()
+}

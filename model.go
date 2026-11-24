@@ -1,6 +1,8 @@
 package main
 
 import (
+	"sort"
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/textinput"
@@ -17,6 +19,32 @@ const (
 	modeConfirmingDelete
 	modeOverview
 )
+
+type sortMode int
+
+const (
+	sortManual sortMode = iota
+	sortUndoneFirst
+	sortDoneFirst
+	sortAlphaAsc
+	sortAlphaDesc
+	sortModeCount
+)
+
+func (s sortMode) label() string {
+	switch s {
+	case sortUndoneFirst:
+		return "undone"
+	case sortDoneFirst:
+		return "done"
+	case sortAlphaAsc:
+		return "a-z"
+	case sortAlphaDesc:
+		return "z-a"
+	default:
+		return ""
+	}
+}
 
 type Todo struct {
 	Title string `json:"title"`
@@ -35,6 +63,7 @@ type model struct {
 	overviewCursor int
 	width          int
 	height         int
+	sortMode       sortMode
 	statusErr      string
 }
 
@@ -108,4 +137,73 @@ func (m *model) startEditing() tea.Cmd {
 	m.input.SetValue(todos[m.cursor].Title)
 	m.input.CursorEnd()
 	return m.input.Focus()
+}
+
+func (m *model) moveItem(delta int) {
+	todos := m.current()
+	if len(todos) < 2 {
+		return
+	}
+	m.clampCursor()
+	target := m.cursor + delta
+	if target < 0 || target >= len(todos) {
+		return
+	}
+	todos[m.cursor], todos[target] = todos[target], todos[m.cursor]
+	m.cursor = target
+	m.sortMode = sortManual
+	m.persist()
+}
+
+func (m *model) cycleSort() {
+	m.sortMode = (m.sortMode + 1) % sortModeCount
+	if m.sortMode == sortManual {
+		return
+	}
+
+	todos := m.current()
+	if len(todos) < 2 {
+		return
+	}
+	m.clampCursor()
+
+	type indexedTodo struct {
+		todo Todo
+		orig int
+	}
+	wrapped := make([]indexedTodo, len(todos))
+	for i, t := range todos {
+		wrapped[i] = indexedTodo{todo: t, orig: i}
+	}
+
+	sort.SliceStable(wrapped, func(i, j int) bool {
+		a, b := wrapped[i].todo, wrapped[j].todo
+		switch m.sortMode {
+		case sortUndoneFirst:
+			if a.Done != b.Done {
+				return !a.Done && b.Done
+			}
+			return false
+		case sortDoneFirst:
+			if a.Done != b.Done {
+				return a.Done && !b.Done
+			}
+			return false
+		case sortAlphaAsc:
+			return strings.ToLower(a.Title) < strings.ToLower(b.Title)
+		case sortAlphaDesc:
+			return strings.ToLower(a.Title) > strings.ToLower(b.Title)
+		default:
+			return false
+		}
+	})
+
+	hoveredOrig := m.cursor
+	for i, w := range wrapped {
+		todos[i] = w.todo
+		if w.orig == hoveredOrig {
+			m.cursor = i
+		}
+	}
+	m.persist()
 }

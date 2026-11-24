@@ -93,8 +93,8 @@ func (m model) View() tea.View {
 		s += "\n" + m.input.View() + "\n"
 		s += "\n" + truncateLine("enter to save · esc to cancel", m.width) + "\n"
 	case m.showHelp:
-		s += "\n" + truncateLine("h/l prev/next day · j/k move · a add · e edit · d delete", m.width) + "\n"
-		s += truncateLine("w week overview · t today · ? help · q quit", m.width) + "\n"
+		s += "\n" + truncateLine("h/l day · j/k move · J/K reorder · s sort", m.width) + "\n"
+		s += truncateLine("a add · e edit · d delete · w week · t today · q quit", m.width) + "\n"
 		s += truncateLine("press ? to hide help", m.width) + "\n"
 	}
 
@@ -125,6 +125,10 @@ func (m model) header() string {
 
 	if m.dayStart != 0 {
 		label += "  (day starts " + formatClock(m.dayStart) + ")"
+	}
+
+	if sLabel := m.sortMode.label(); sLabel != "" {
+		label += " [" + sLabel + "]"
 	}
 	return label
 }

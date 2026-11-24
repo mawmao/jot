@@ -88,6 +88,15 @@ func (m model) updateBrowsing(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.day = logicalDay(time.Now(), m.dayStart)
 			m.cursor = 0
 			m.clampCursor()
+
+		case "K":
+			m.moveItem(-1)
+
+		case "J":
+			m.moveItem(1)
+
+		case "s":
+			m.cycleSort()
 		}
 	}
 	return m, nil

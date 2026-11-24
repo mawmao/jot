@@ -44,6 +44,7 @@ func (m model) updateBrowsing(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter", "space":
 			todos := m.current()
 			if len(todos) > 0 {
+				m.clampCursor()
 				todos[m.cursor].Done = !todos[m.cursor].Done
 				_ = saveStore(m.store)
 			}
@@ -71,10 +72,12 @@ func (m model) updateBrowsing(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "left", "h", "[":
 			m.day = m.day.AddDate(0, 0, -1)
 			m.cursor = 0
+			m.clampCursor()
 
 		case "right", "l", "]":
 			m.day = m.day.AddDate(0, 0, 1)
 			m.cursor = 0
+			m.clampCursor()
 
 		case "w":
 			m.mode = modeOverview
@@ -85,6 +88,7 @@ func (m model) updateBrowsing(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "t":
 			m.day = logicalDay(time.Now(), m.dayStart)
 			m.cursor = 0
+			m.clampCursor()
 		}
 	}
 	return m, nil
@@ -213,6 +217,7 @@ func (m model) updateOverview(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			m.day = m.overviewWeek.AddDate(0, 0, m.overviewCursor)
 			m.cursor = 0
+			m.clampCursor()
 			m.mode = modeBrowsing
 		}
 	}

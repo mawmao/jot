@@ -65,3 +65,14 @@ func (m *model) setCurrent(todos []Todo) {
 	}
 	m.store[key] = todos
 }
+
+func (m *model) clampCursor() {
+	n := len(m.current())
+	if n == 0 || m.cursor < 0 {
+		m.cursor = 0
+		return
+	}
+	if m.cursor >= n {
+		m.cursor = n - 1
+	}
+}

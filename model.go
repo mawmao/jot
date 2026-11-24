@@ -17,6 +17,7 @@ const (
 	modeAdding
 	modeEditing
 	modeConfirmingDelete
+	modeConfirmingMove
 	modeOverview
 )
 
@@ -58,6 +59,7 @@ type model struct {
 	cursor         int
 	input          textinput.Model
 	mode           mode
+	noDay          bool
 	showHelp       bool
 	overviewWeek   time.Time
 	overviewCursor int
@@ -88,11 +90,11 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) current() []Todo {
-	return m.store[dayKey(m.day)]
+	return m.store[m.activeKey()]
 }
 
 func (m *model) setCurrent(todos []Todo) {
-	key := dayKey(m.day)
+	key := m.activeKey()
 	if len(todos) == 0 {
 		delete(m.store, key)
 		return
@@ -205,5 +207,30 @@ func (m *model) cycleSort() {
 			m.cursor = i
 		}
 	}
+	m.persist()
+}
+
+func (m model) activeKey() string {
+	if m.noDay {
+		return noDayKey
+	}
+	return dayKey(m.day)
+}
+
+func (m *model) moveCurrentItem() {
+	todos := m.current()
+	if len(todos) == 0 || m.cursor >= len(todos) {
+		return
+	}
+	item := todos[m.cursor]
+	todos = append(todos[:m.cursor], todos[m.cursor+1:]...)
+	m.setCurrent(todos)
+	m.clampCursor()
+
+	destKey := noDayKey
+	if m.noDay {
+		destKey = dayKey(m.day)
+	}
+	m.store[destKey] = append(m.store[destKey], item)
 	m.persist()
 }

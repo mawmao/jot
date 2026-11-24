@@ -23,6 +23,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateTextInput(msg)
 	case modeConfirmingDelete:
 		return m.updateConfirmingDelete(msg)
+	case modeConfirmingMove:
+		return m.updateConfirmingMove(msg)
 	case modeOverview:
 		return m.updateOverview(msg)
 	}
@@ -69,25 +71,45 @@ func (m model) updateBrowsing(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "left", "h", "[":
-			m.day = m.day.AddDate(0, 0, -1)
-			m.cursor = 0
-			m.clampCursor()
+			if !m.noDay {
+				m.day = m.day.AddDate(0, 0, -1)
+				m.cursor = 0
+				m.sortMode = sortManual
+				m.clampCursor()
+			}
 
 		case "right", "l", "]":
-			m.day = m.day.AddDate(0, 0, 1)
+			if !m.noDay {
+				m.day = m.day.AddDate(0, 0, 1)
+				m.cursor = 0
+				m.sortMode = sortManual
+				m.clampCursor()
+			}
+
+		case "t":
+			m.noDay = false
+			m.day = logicalDay(time.Now(), m.dayStart)
 			m.cursor = 0
+			m.sortMode = sortManual
 			m.clampCursor()
 
 		case "w":
-			m.mode = modeOverview
-			m.overviewWeek = startOfWeek(m.day)
-			m.overviewCursor = dayIndexInWeek(m.day, m.overviewWeek)
+			if m.noDay {
+				m.noDay = false
+				m.cursor = 0
+				m.sortMode = sortManual
+				m.clampCursor()
+			} else {
+				m.mode = modeOverview
+				m.overviewWeek = startOfWeek(m.day)
+				m.overviewCursor = dayIndexInWeek(m.day, m.overviewWeek)
+			}
 			return m, nil
 
-		case "t":
-			m.day = logicalDay(time.Now(), m.dayStart)
-			m.cursor = 0
-			m.clampCursor()
+		case "m":
+			if len(m.current()) > 0 {
+				m.mode = modeConfirmingMove
+			}
 
 		case "K":
 			m.moveItem(-1)
@@ -173,7 +195,16 @@ func (m model) updateOverview(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 
-		case "esc", "w":
+		case "esc":
+			m.noDay = false
+			m.mode = modeBrowsing
+			return m, nil
+
+		case "w":
+			m.noDay = true
+			m.cursor = 0
+			m.sortMode = sortManual
+			m.clampCursor()
 			m.mode = modeBrowsing
 			return m, nil
 
@@ -202,6 +233,21 @@ func (m model) updateOverview(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.day = m.overviewWeek.AddDate(0, 0, m.overviewCursor)
 			m.cursor = 0
 			m.clampCursor()
+			m.mode = modeBrowsing
+		}
+	}
+	return m, nil
+}
+
+func (m model) updateConfirmingMove(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyPressMsg:
+		switch msg.String() {
+		case "m", "enter":
+			m.moveCurrentItem()
+			m.mode = modeBrowsing
+
+		case "n", "esc":
 			m.mode = modeBrowsing
 		}
 	}

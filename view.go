@@ -1,4 +1,3 @@
-// ./view.go
 package main
 
 import (
@@ -28,11 +27,10 @@ func (m model) View() tea.View {
 
 	todos := m.current()
 
-	reserved := 2
+	reserved := 4
 	scrolled := false
-	if m.height > 0 && len(todos) > 0 {
-		avail := max(1, m.height-reserved)
-		if len(todos) > avail {
+	if m.height > 0 && len(todos) > max(1, m.height-reserved) {
+		if m.height-reserved >= 3 && len(todos) > max(1, m.height-reserved-2) {
 			scrolled = true
 			reserved += 2
 		}
@@ -73,7 +71,7 @@ func (m model) View() tea.View {
 		switch {
 		case m.mode == modeConfirmingDelete && m.cursor == i:
 			line = deleteStyle.Render(line)
-		case m.mode == modeEditing && m.cursor == i:
+		case (m.mode == modeEditing || m.mode == modeConfirmingMove) && m.cursor == i:
 			line = editStyle.Render(line)
 		}
 
@@ -89,12 +87,21 @@ func (m model) View() tea.View {
 		if m.cursor < len(todos) {
 			s += "\n" + truncateLine("Press 'd' again to delete", m.width) + "\n"
 		}
+
+	case m.mode == modeConfirmingMove:
+		if m.cursor < len(todos) {
+			dest := "no-day"
+			if m.noDay {
+				dest = m.day.Format("Mon Jan 2")
+			}
+			s += "\n" + truncateLine(fmt.Sprintf("Press 'm' again to move to %s", dest), m.width) + "\n"
+		}
 	case m.mode != modeBrowsing:
 		s += "\n" + m.input.View() + "\n"
 		s += "\n" + truncateLine("enter to save · esc to cancel", m.width) + "\n"
 	case m.showHelp:
 		s += "\n" + truncateLine("h/l day · j/k move · J/K reorder · s sort", m.width) + "\n"
-		s += truncateLine("a add · e edit · d delete · w week · t today · q quit", m.width) + "\n"
+		s += truncateLine("a add · e edit · d delete · m move · w view · t today · q quit", m.width) + "\n"
 		s += truncateLine("press ? to hide help", m.width) + "\n"
 	}
 
@@ -108,23 +115,27 @@ func (m model) View() tea.View {
 }
 
 func (m model) header() string {
-	today := logicalDay(time.Now(), m.dayStart)
-	base := m.day.Format("Mon Jan 2")
-
 	var label string
-	switch {
-	case m.day.Equal(today):
-		label = "Today · " + base
-	case m.day.Equal(today.AddDate(0, 0, -1)):
-		label = "Yesterday · " + base
-	case m.day.Equal(today.AddDate(0, 0, 1)):
-		label = "Tomorrow · " + base
-	default:
-		label = base
-	}
+	if m.noDay {
+		label = "No day"
+	} else {
+		today := logicalDay(time.Now(), m.dayStart)
+		base := m.day.Format("Mon Jan 2")
 
-	if m.dayStart != 0 {
-		label += "  (day starts " + formatClock(m.dayStart) + ")"
+		switch {
+		case m.day.Equal(today):
+			label = "Today · " + base
+		case m.day.Equal(today.AddDate(0, 0, -1)):
+			label = "Yesterday · " + base
+		case m.day.Equal(today.AddDate(0, 0, 1)):
+			label = "Tomorrow · " + base
+		default:
+			label = base
+		}
+
+		if m.dayStart != 0 {
+			label += "  (day starts " + formatClock(m.dayStart) + ")"
+		}
 	}
 
 	if sLabel := m.sortMode.label(); sLabel != "" {

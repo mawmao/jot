@@ -7,7 +7,10 @@ import (
 	"time"
 )
 
-const dateFormat = "2006-01-02"
+const (
+	dateFormat = "2006-01-02"
+	noDayKey   = "no-day"
+)
 
 type Store map[string][]Todo
 

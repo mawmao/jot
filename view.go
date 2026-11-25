@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -16,6 +17,21 @@ var (
 	editStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("214")).
 			Bold(true)
+
+	headerBarStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color("236")).
+			Foreground(lipgloss.Color("255")).
+			Bold(true).
+			Padding(0, 1)
+
+	headerMutedStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color("236")).
+				Foreground(lipgloss.Color("245"))
+
+	headerBadgeStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color("236")).
+				Foreground(lipgloss.Color("214")).
+				Bold(true)
 )
 
 func (m model) View() tea.View {
@@ -50,7 +66,7 @@ func (m model) View() tea.View {
 
 	start, end := m.visibleRange(len(todos), reserved)
 
-	s := truncateLine(m.header(), m.width) + "\n\n"
+	s := m.header() + "\n\n"
 
 	if len(todos) == 0 {
 		s += truncateLine("  nothing yet - press a to jot one down", m.width) + "\n"
@@ -114,43 +130,68 @@ func (m model) View() tea.View {
 	return v
 }
 
+func (m model) renderHeaderBar(left, right string) string {
+	innerWidth := m.width - 2
+	if innerWidth <= 0 {
+		if right != "" {
+			return headerBarStyle.Render(left + " " + right)
+		}
+		return headerBarStyle.Render(left)
+	}
+
+	leftW := lipgloss.Width(left)
+	rightW := lipgloss.Width(right)
+
+	if right != "" && leftW+rightW+2 <= innerWidth {
+		gap := strings.Repeat(" ", innerWidth-leftW-rightW)
+		return headerBarStyle.Width(m.width).Render(left + gap + right)
+	}
+
+	combined := left
+	if right != "" {
+		combined += " " + right
+	}
+	return headerBarStyle.Width(m.width).Render(truncateLine(combined, innerWidth))
+}
+
 func (m model) header() string {
-	var label string
+	var left string
 	if m.noDay {
-		label = "No day"
+		left = "No day"
 	} else {
 		today := logicalDay(time.Now(), m.dayStart)
 		base := m.day.Format("Mon Jan 2")
 
 		switch {
 		case m.day.Equal(today):
-			label = "Today · " + base
+			left = "Today · " + base
 		case m.day.Equal(today.AddDate(0, 0, -1)):
-			label = "Yesterday · " + base
+			left = "Yesterday · " + base
 		case m.day.Equal(today.AddDate(0, 0, 1)):
-			label = "Tomorrow · " + base
+			left = "Tomorrow · " + base
 		default:
-			label = base
-		}
-
-		if m.dayStart != 0 {
-			label += "  (day starts " + formatClock(m.dayStart) + ")"
+			left = base
 		}
 	}
 
+	var rightParts []string
+	if !m.noDay && m.dayStart != 0 {
+		rightParts = append(rightParts, headerMutedStyle.Render(formatClock(m.dayStart)))
+	}
 	if sLabel := m.sortMode.label(); sLabel != "" {
-		label += " [" + sLabel + "]"
+		rightParts = append(rightParts, headerBadgeStyle.Render("["+sLabel+"]"))
 	}
-	return label
+
+	return m.renderHeaderBar(left, strings.Join(rightParts, " "))
 }
 
 func (m model) overviewView() string {
 	end := m.overviewWeek.AddDate(0, 0, 6)
-	header := fmt.Sprintf("Week of %s - %s, %d",
+	title := fmt.Sprintf("Week of %s - %s, %d",
 		m.overviewWeek.Format("Jan 2"),
 		end.Format("Jan 2"),
 		m.overviewWeek.Year())
-	s := truncateLine(header, m.width) + "\n\n"
+	s := m.renderHeaderBar(title, "") + "\n\n"
 
 	today := logicalDay(time.Now(), m.dayStart)
 

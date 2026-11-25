@@ -52,12 +52,7 @@ func (m model) updateBrowsing(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter", "space":
-			todos := m.current()
-			if len(todos) > 0 {
-				m.clampCursor()
-				todos[m.cursor].Done = !todos[m.cursor].Done
-				m.persist()
-			}
+			m.markDone()
 
 		case "a", "n":
 			return m, m.startAdding()
@@ -76,6 +71,8 @@ func (m model) updateBrowsing(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor = 0
 				m.sortMode = sortManual
 				m.clampCursor()
+			} else {
+				m.markDone()
 			}
 
 		case "right", "l", "]":
@@ -84,6 +81,8 @@ func (m model) updateBrowsing(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor = 0
 				m.sortMode = sortManual
 				m.clampCursor()
+			} else {
+				m.markDone()
 			}
 
 		case "t":
@@ -229,7 +228,7 @@ func (m model) updateOverview(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.overviewWeek = startOfWeek(now)
 			m.overviewCursor = dayIndexInWeek(now, m.overviewWeek)
 
-		case "enter":
+		case "enter", "space":
 			m.day = m.overviewWeek.AddDate(0, 0, m.overviewCursor)
 			m.cursor = 0
 			m.clampCursor()
@@ -252,4 +251,13 @@ func (m model) updateConfirmingMove(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func (m model) markDone() {
+	todos := m.current()
+	if len(todos) > 0 {
+		m.clampCursor()
+		todos[m.cursor].Done = !todos[m.cursor].Done
+		m.persist()
+	}
 }
